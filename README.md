@@ -37,6 +37,12 @@ Default local endpoints:
 - Frontend: `http://localhost:5173`
 - Backend health: `http://localhost:8080/api/health`
 
+### 3) Run all tests (backend + frontend)
+
+```bash
+make test
+```
+
 ## Documentation Site (VitePress)
 
 ### Local docs development
@@ -72,6 +78,17 @@ Notes:
   - `"/"` for `<user>.github.io` repositories
   - `"/<repo-name>/"` for normal project repositories
 - Ensure GitHub Pages source is set to **GitHub Actions** in repository settings.
+
+## CI: Auto Test Frontend + Backend (All Branches)
+
+This repository includes a CI workflow:
+
+- `.github/workflows/ci.yml`
+
+Behavior:
+
+- Trigger: every `push` to any branch and every `pull_request` to any branch
+- CI job runs unified command: `make test`
 
 ## Environment Variables
 
@@ -110,6 +127,12 @@ make run
 - 前端：`http://localhost:5173`
 - 后端健康检查：`http://localhost:8080/api/health`
 
+### 测试（前后端一起）
+
+```bash
+make test
+```
+
 ### 文档站（VitePress）
 
 ```bash
@@ -131,6 +154,12 @@ make docs-build
 - 触发条件：`push` 到 `main`
 - 发布内容：`docs/.vitepress/dist`
 - Pages 来源请设置为：**GitHub Actions**
+
+### 全分支自动测试（前后端 CI）
+
+- 工作流文件：`.github/workflows/ci.yml`
+- 触发条件：所有分支的 `push` 和 `pull_request`
+- CI 统一执行：`make test`
 
 ### 许可证
 

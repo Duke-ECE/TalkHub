@@ -1,10 +1,11 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env install backend-install frontend-install build backend-build frontend-build run docs-install docs-run docs-build clean
+.PHONY: help ensure-env install backend-install frontend-install build backend-build frontend-build backend-test frontend-test test run docs-install docs-run docs-build clean
 
 help:
 	@printf "%s\n" \
 		"make install  - copy .env from .env.example if missing, install deps, build backend and frontend" \
+		"make test     - run backend tests and frontend checks" \
 		"make run      - start backend and frontend together with variables from root .env" \
 		"make docs-install - install docs dependencies" \
 		"make docs-run     - start VitePress docs dev server on 5174" \
@@ -43,6 +44,18 @@ backend-build:
 frontend-build:
 	@set -a; source ./.env; set +a; \
 	cd frontend && npm run build
+
+backend-test:
+	@cd backend && ./mvnw -B test
+
+frontend-test:
+	@cd frontend; \
+	if [ ! -d node_modules ]; then \
+		npm ci; \
+	fi; \
+	npm run build
+
+test: backend-test frontend-test
 
 run: ensure-env
 	@set -a; source ./.env; \
