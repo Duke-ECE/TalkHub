@@ -1,0 +1,5 @@
+#!/bin/sh
+# Placeholder wrapper script.
+# Replace with the generated Maven Wrapper if the team standardizes on wrapper binaries.
+exec mvn "$@"
+
