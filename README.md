@@ -1,48 +1,116 @@
 # TalkHub
 
-TalkHub 是一个轻量级实时聊天与语音平台。本仓库当前已完成第一阶段第 1 步“项目初始化”的基础骨架。
+TalkHub is a lightweight real-time chat and voice platform.
 
-## 目录
+## Overview
 
-- `backend`: Spring Boot 后端
-- `frontend`: React + Vite + Tailwind 前端
-- `shared`: 共享协议、常量、示例数据预留目录
-- `docs`: 项目文档
-- `specs`: 接口与协议草案预留目录
+- Frontend: React + Vite + Tailwind CSS
+- Backend: Spring Boot + WebSocket
+- Cache: Redis
+- Queue: RabbitMQ
+- Database: PostgreSQL
 
-## 环境变量
+## Repository Structure
 
-复制根目录 `.env.example` 后按实际环境填写。数据库统一按 PostgreSQL 配置。
+- `backend`: Spring Boot backend service
+- `frontend`: React + Vite web client
+- `docs`: VitePress documentation site (English + Chinese)
+- `shared`: shared protocol/constants placeholders
+- `specs`: requirement/design specifications
 
-## 启动
+## Quick Start
 
-### 一键安装与运行
+### 1) Install dependencies
+
+```bash
+make install
+```
+
+### 2) Run backend + frontend
+
+```bash
+make run
+```
+
+Default local endpoints:
+
+- Frontend: `http://localhost:5173`
+- Backend health: `http://localhost:8080/api/health`
+
+## Documentation Site (VitePress)
+
+### Local docs development
+
+```bash
+make docs-install
+make docs-run
+```
+
+Docs site URL: `http://localhost:5174`
+
+### Build docs
+
+```bash
+make docs-build
+```
+
+## CI/CD: Auto Deploy Docs to GitHub Pages
+
+This repository includes a GitHub Actions workflow:
+
+- `.github/workflows/deploy-docs.yml`
+
+Behavior:
+
+- Trigger: every push to `main` (and manual `workflow_dispatch`)
+- Build: `docs` with VitePress
+- Deploy: publish `docs/.vitepress/dist` to GitHub Pages
+
+Notes:
+
+- Workflow automatically sets VitePress `base`:
+  - `"/"` for `<user>.github.io` repositories
+  - `"/<repo-name>/"` for normal project repositories
+- Ensure GitHub Pages source is set to **GitHub Actions** in repository settings.
+
+## Environment Variables
+
+- Template: `.env.example`
+- Local file: `.env` (ignored by Git)
+
+The project uses PostgreSQL settings from env vars by default. You can also provide a full `DB_DSN`.
+
+## License
+
+This project is licensed under the [MIT License](./LICENSE).
+
+---
+
+## 中文说明
+
+TalkHub 是一个轻量级实时聊天与语音平台。
+
+### 技术栈
+
+- 前端：React + Vite + Tailwind CSS
+- 后端：Spring Boot + WebSocket
+- 缓存：Redis
+- 消息队列：RabbitMQ
+- 数据库：PostgreSQL
+
+### 快速启动
 
 ```bash
 make install
 make run
 ```
 
-`make install` 会在根目录不存在 `.env` 时，自动用 `.env.example` 复制出一份 `.env`，然后安装并编译前后端。
+默认访问地址：
 
-`make run` 会读取根目录 `.env`，并同时启动后端和前端开发服务。
+- 前端：`http://localhost:5173`
+- 后端健康检查：`http://localhost:8080/api/health`
 
-### 手动启动
-
-```bash
-cd backend
-./mvnw spring-boot:run
-```
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## 文档站（VitePress）
-
-文档目录位于 `docs`，支持中英文切换。
+### 文档站（VitePress）
 
 ```bash
 make docs-install
@@ -51,21 +119,19 @@ make docs-run
 
 默认地址：`http://localhost:5174`
 
-构建静态站点：
+构建文档：
 
 ```bash
 make docs-build
 ```
 
-## 当前状态
+### 文档自动发布（GitHub Pages）
 
-已完成：
+- 工作流文件：`.github/workflows/deploy-docs.yml`
+- 触发条件：`push` 到 `main`
+- 发布内容：`docs/.vitepress/dist`
+- Pages 来源请设置为：**GitHub Actions**
 
-- 项目目录初始化
-- Spring Boot 最小后端骨架
-- React + Vite + Tailwind 最小前端骨架
-- PostgreSQL 环境变量模板
+### 许可证
 
-未完成：
-
-- 登录、JWT、WebSocket、聊天、持久化等业务能力
+本项目使用 [MIT License](./LICENSE)。

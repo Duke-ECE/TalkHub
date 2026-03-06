@@ -1,6 +1,7 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
+  base: process.env.VITEPRESS_BASE || "/",
   title: "TalkHub Docs",
   description: "TalkHub project documentation.",
   lang: "zh-CN",
