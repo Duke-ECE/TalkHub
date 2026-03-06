@@ -12,11 +12,16 @@ public class AppProperties {
     @NotBlank
     private String jwtSecret = "change-me";
 
+    private long jwtExpiresSeconds = 86400;
+
     @NotNull
     private final Realtime realtime = new Realtime();
 
     @NotNull
     private final Database database = new Database();
+
+    @NotNull
+    private final Admin admin = new Admin();
 
     public String getJwtSecret() {
         return jwtSecret;
@@ -26,12 +31,24 @@ public class AppProperties {
         this.jwtSecret = jwtSecret;
     }
 
+    public long getJwtExpiresSeconds() {
+        return jwtExpiresSeconds;
+    }
+
+    public void setJwtExpiresSeconds(long jwtExpiresSeconds) {
+        this.jwtExpiresSeconds = jwtExpiresSeconds;
+    }
+
     public Realtime getRealtime() {
         return realtime;
     }
 
     public Database getDatabase() {
         return database;
+    }
+
+    public Admin getAdmin() {
+        return admin;
     }
 
     public static class Realtime {
@@ -132,6 +149,41 @@ public class AppProperties {
 
         public void setBootstrapDatabase(String bootstrapDatabase) {
             this.bootstrapDatabase = bootstrapDatabase;
+        }
+    }
+
+    public static class Admin {
+        @NotBlank
+        private String username = "admin";
+
+        @NotBlank
+        private String password = "admin123456";
+
+        @NotBlank
+        private String nickname = "Administrator";
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getNickname() {
+            return nickname;
+        }
+
+        public void setNickname(String nickname) {
+            this.nickname = nickname;
         }
     }
 }

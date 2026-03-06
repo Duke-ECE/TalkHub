@@ -19,6 +19,9 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     show-sql: false
+  sql:
+    init:
+      mode: always
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -40,6 +43,11 @@ management:
 
 app:
   jwt-secret: ${JWT_SECRET:change-me}
+  jwt-expires-seconds: ${JWT_EXPIRES_SECONDS:86400}
+  admin:
+    username: ${ADMIN_USERNAME:admin}
+    password: ${ADMIN_PASSWORD:admin123456}
+    nickname: ${ADMIN_NICKNAME:Administrator}
   database:
     auto-create-if-missing: ${DB_AUTO_CREATE_IF_MISSING:true}
     host: ${PG_HOST:localhost}
