@@ -40,6 +40,23 @@ npm install
 npm run dev
 ```
 
+## 文档站（VitePress）
+
+文档目录位于 `docs`，支持中英文切换。
+
+```bash
+make docs-install
+make docs-run
+```
+
+默认地址：`http://localhost:5174`
+
+构建静态站点：
+
+```bash
+make docs-build
+```
+
 ## 当前状态
 
 已完成：
