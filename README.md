@@ -32,12 +32,19 @@ make install
 make run
 ```
 
+Run with backend mock data:
+
+```bash
+make mock
+```
+
 Default local endpoints:
 
 - Frontend: `http://localhost:5173`
 - Backend health: `http://localhost:8080/api/health`
 - Channel history: `GET /api/channels/1/messages`
 - HTTP debug send: `POST /api/channels/1/messages`
+- Browser realtime bridge: `GET /api/im/browser/events`
 
 ### 3) Run all tests (backend + frontend)
 
@@ -124,12 +131,24 @@ make install
 make run
 ```
 
+如果想直接带后端 mock 数据启动：
+
+```bash
+make mock
+```
+
 默认访问地址：
 
 - 前端：`http://localhost:5173`
 - 后端健康检查：`http://localhost:8080/api/health`
 - 频道历史消息：`GET /api/channels/1/messages`
 - 浏览器调试发送：`POST /api/channels/1/messages`
+
+`make mock` 会额外灌入：
+
+- mock 用户：`lea`、`mika`、`sora`
+- mock 频道：`general`、`product`、`ops`
+- mock 用户默认密码：`mock123456`
 
 ### 当前前端链路说明
 

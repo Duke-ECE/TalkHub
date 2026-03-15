@@ -2,6 +2,7 @@ package com.talkhub.backend.security;
 
 import com.talkhub.backend.config.AppProperties;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
 
@@ -36,6 +37,14 @@ public class JwtService {
             .claims(Map.of("username", username))
             .signWith(secretKey)
             .compact();
+    }
+
+    public Claims parseClaims(String token) {
+        return Jwts.parser()
+            .verifyWith(secretKey)
+            .build()
+            .parseSignedClaims(token)
+            .getPayload();
     }
 
     private byte[] deriveKey(String sourceSecret) {

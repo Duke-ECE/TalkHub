@@ -23,6 +23,8 @@ type MessageItem = {
   createdAt: string
 }
 
+type SendState = 'idle' | 'sending' | 'failed'
+
 type ApiErrorResponse = {
   code?: string
   message?: string
@@ -64,6 +66,13 @@ function mergeMessage(current: MessageItem[], incoming: MessageItem) {
   return [...current, incoming].sort(
     (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
   )
+}
+
+function createClientMessageId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
 function readAuthFromStorage(): AuthState | null {
@@ -108,6 +117,7 @@ export default function App() {
   const [onlineUsersError, setOnlineUsersError] = useState('')
   const [imConnectionState, setImConnectionState] = useState<'idle' | 'connecting' | 'live' | 'retrying' | 'offline'>('idle')
   const [imConnectionError, setImConnectionError] = useState('')
+  const [messageSendStates, setMessageSendStates] = useState<Record<string, SendState>>({})
   const messageListRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -190,6 +200,7 @@ export default function App() {
       setOnlineUsersError('')
       setImConnectionState('idle')
       setImConnectionError('')
+      setMessageSendStates({})
       return
     }
 
@@ -225,6 +236,7 @@ export default function App() {
       eventSource.addEventListener('chat', (event) => {
         const payload = JSON.parse((event as MessageEvent).data) as MessageItem
         setMessages((current) => mergeMessage(current, payload))
+        setMessageSendStates((current) => ({ ...current, [payload.messageId]: 'idle' }))
         setLastRefreshAt(new Date().toISOString())
         setSilentRefreshFailed(false)
         setMessagesError('')
@@ -326,6 +338,19 @@ export default function App() {
 
     setSendLoading(true)
     setSendError('')
+    const clientMessageId = createClientMessageId()
+    const optimisticMessage: MessageItem = {
+      id: -Date.now(),
+      messageId: clientMessageId,
+      channelId: DEFAULT_CHANNEL_ID,
+      senderId: auth.user.id,
+      senderUsername: auth.user.nickname || auth.user.username,
+      content,
+      status: 'SENDING',
+      createdAt: new Date().toISOString(),
+    }
+    setMessages((current) => mergeMessage(current, optimisticMessage))
+    setMessageSendStates((current) => ({ ...current, [clientMessageId]: 'sending' }))
     try {
       const resp = await fetch(`${imGatewayUrl}/channels/${DEFAULT_CHANNEL_ID}/messages`, {
         method: 'POST',
@@ -333,7 +358,7 @@ export default function App() {
           Authorization: `Bearer ${auth.token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, clientMessageId }),
       })
 
       if (!resp.ok) {
@@ -347,11 +372,21 @@ export default function App() {
         throw new Error(errorMessage)
       }
 
-      await resp.json()
+      const created = (await resp.json()) as MessageItem
+      setMessages((current) => mergeMessage(current, created))
+      setMessageSendStates((current) => ({ ...current, [created.messageId]: 'idle' }))
       setComposerText('')
       setLastRefreshAt(new Date().toISOString())
       setSilentRefreshFailed(false)
     } catch (error) {
+      setMessageSendStates((current) => ({ ...current, [clientMessageId]: 'failed' }))
+      setMessages((current) =>
+        current.map((item) =>
+          item.messageId === clientMessageId
+            ? { ...item, status: 'FAILED' }
+            : item,
+        ),
+      )
       setSendError(error instanceof Error ? error.message : '消息发送失败，请检查后端服务。')
     } finally {
       setSendLoading(false)
@@ -560,6 +595,7 @@ export default function App() {
 
                   {messages.map((message) => {
                     const isMine = message.senderId === auth.user.id
+                    const sendState = messageSendStates[message.messageId] ?? 'idle'
                     return (
                       <article
                         key={message.messageId}
@@ -570,7 +606,18 @@ export default function App() {
                         }`}
                       >
                         <div className={`flex items-center justify-between gap-3 text-xs ${isMine ? 'text-slate-300' : 'text-slate-500'}`}>
-                          <span className="font-semibold">{message.senderUsername}</span>
+                          <span className="flex items-center gap-2 font-semibold">
+                            <span>{message.senderUsername}</span>
+                            {isMine && sendState !== 'idle' ? (
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                sendState === 'sending'
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-rose-100 text-rose-700'
+                              }`}>
+                                {sendState === 'sending' ? '发送中' : '发送失败'}
+                              </span>
+                            ) : null}
+                          </span>
                           <span>{formatTime(message.createdAt)}</span>
                         </div>
                         <p className={`mt-2 text-sm leading-7 ${isMine ? 'text-slate-100' : 'text-slate-700'}`}>

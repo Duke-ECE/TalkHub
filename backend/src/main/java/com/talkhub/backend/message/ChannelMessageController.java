@@ -63,7 +63,9 @@ public class ChannelMessageController {
         ensureChannelExists(channelId);
         Long userId = Long.valueOf(claims.getSubject());
         MessageView saved = messageService.createMessage(
-            UUID.randomUUID().toString(),
+            request.getClientMessageId() == null || request.getClientMessageId().isBlank()
+                ? UUID.randomUUID().toString()
+                : request.getClientMessageId().trim(),
             channelId,
             userId,
             request.getContent().trim()

@@ -15,13 +15,16 @@ public class AppProperties {
     private long jwtExpiresSeconds = 86400;
 
     @NotNull
-    private final Realtime realtime = new Realtime();
+    private final Im im = new Im();
 
     @NotNull
     private final Database database = new Database();
 
     @NotNull
     private final Admin admin = new Admin();
+
+    @NotNull
+    private final Mock mock = new Mock();
 
     public String getJwtSecret() {
         return jwtSecret;
@@ -39,8 +42,8 @@ public class AppProperties {
         this.jwtExpiresSeconds = jwtExpiresSeconds;
     }
 
-    public Realtime getRealtime() {
-        return realtime;
+    public Im getIm() {
+        return im;
     }
 
     public Database getDatabase() {
@@ -51,16 +54,110 @@ public class AppProperties {
         return admin;
     }
 
-    public static class Realtime {
-        @NotBlank
-        private String websocketPath = "/ws";
+    public Mock getMock() {
+        return mock;
+    }
 
-        public String getWebsocketPath() {
-            return websocketPath;
+    public static class Im {
+        private boolean enabled;
+
+        @NotBlank
+        private String host = "0.0.0.0";
+
+        private int port = 9090;
+
+        private int bossThreads = 1;
+
+        private int workerThreads;
+
+        private int readerIdleSeconds = 60;
+
+        private int writerIdleSeconds = 25;
+
+        private int maxFrameLength = 1024 * 1024;
+
+        private int compressionThresholdBytes = 512;
+
+        private int sessionTtlSeconds = 120;
+
+        public boolean isEnabled() {
+            return enabled;
         }
 
-        public void setWebsocketPath(String websocketPath) {
-            this.websocketPath = websocketPath;
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public int getPort() {
+            return port;
+        }
+
+        public void setPort(int port) {
+            this.port = port;
+        }
+
+        public int getBossThreads() {
+            return bossThreads;
+        }
+
+        public void setBossThreads(int bossThreads) {
+            this.bossThreads = bossThreads;
+        }
+
+        public int getWorkerThreads() {
+            return workerThreads;
+        }
+
+        public void setWorkerThreads(int workerThreads) {
+            this.workerThreads = workerThreads;
+        }
+
+        public int getReaderIdleSeconds() {
+            return readerIdleSeconds;
+        }
+
+        public void setReaderIdleSeconds(int readerIdleSeconds) {
+            this.readerIdleSeconds = readerIdleSeconds;
+        }
+
+        public int getWriterIdleSeconds() {
+            return writerIdleSeconds;
+        }
+
+        public void setWriterIdleSeconds(int writerIdleSeconds) {
+            this.writerIdleSeconds = writerIdleSeconds;
+        }
+
+        public int getMaxFrameLength() {
+            return maxFrameLength;
+        }
+
+        public void setMaxFrameLength(int maxFrameLength) {
+            this.maxFrameLength = maxFrameLength;
+        }
+
+        public int getCompressionThresholdBytes() {
+            return compressionThresholdBytes;
+        }
+
+        public void setCompressionThresholdBytes(int compressionThresholdBytes) {
+            this.compressionThresholdBytes = compressionThresholdBytes;
+        }
+
+        public int getSessionTtlSeconds() {
+            return sessionTtlSeconds;
+        }
+
+        public void setSessionTtlSeconds(int sessionTtlSeconds) {
+            this.sessionTtlSeconds = sessionTtlSeconds;
         }
     }
 
@@ -184,6 +281,29 @@ public class AppProperties {
 
         public void setNickname(String nickname) {
             this.nickname = nickname;
+        }
+    }
+
+    public static class Mock {
+        private boolean enabled;
+
+        @NotBlank
+        private String password = "mock123456";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
         }
     }
 }

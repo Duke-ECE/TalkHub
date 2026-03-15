@@ -8,3 +8,25 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS channels (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL UNIQUE,
+    type VARCHAR(32) NOT NULL DEFAULT 'PUBLIC',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id BIGSERIAL PRIMARY KEY,
+    message_id VARCHAR(64) NOT NULL UNIQUE,
+    channel_id BIGINT NOT NULL REFERENCES channels(id),
+    sender_id BIGINT NOT NULL REFERENCES users(id),
+    content TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'PERSISTED',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO channels (name, type)
+VALUES ('general', 'PUBLIC')
+ON CONFLICT (name) DO NOTHING;

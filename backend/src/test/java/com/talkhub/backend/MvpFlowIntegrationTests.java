@@ -381,6 +381,61 @@ class MvpFlowIntegrationTests {
         readerThread.join(1000);
     }
 
+    @Test
+    void shouldTreatBrowserMessageIdAsIdempotentKey() {
+        ResponseEntity<Map> loginResponse = restTemplate.postForEntity(
+            "http://localhost:" + apiPort + "/api/auth/login",
+            Map.of("username", "admin", "password", "admin123456"),
+            Map.class
+        );
+        assertThat(loginResponse.getStatusCode().is2xxSuccessful()).isTrue();
+        String token = String.valueOf(loginResponse.getBody().get("token"));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> request = Map.of(
+            "content", "hello idempotent browser send",
+            "clientMessageId", "browser-msg-1"
+        );
+
+        ResponseEntity<JsonNode> first = restTemplate.exchange(
+            "http://localhost:" + apiPort + "/api/im/browser/channels/1/messages",
+            HttpMethod.POST,
+            new HttpEntity<>(request, headers),
+            JsonNode.class
+        );
+        ResponseEntity<JsonNode> second = restTemplate.exchange(
+            "http://localhost:" + apiPort + "/api/im/browser/channels/1/messages",
+            HttpMethod.POST,
+            new HttpEntity<>(request, headers),
+            JsonNode.class
+        );
+
+        assertThat(first.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(second.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(first.getBody()).isNotNull();
+        assertThat(second.getBody()).isNotNull();
+        assertThat(first.getBody().path("messageId").asText()).isEqualTo("browser-msg-1");
+        assertThat(second.getBody().path("messageId").asText()).isEqualTo("browser-msg-1");
+        assertThat(second.getBody().path("id").asLong()).isEqualTo(first.getBody().path("id").asLong());
+
+        HttpHeaders getHeaders = new HttpHeaders();
+        getHeaders.setBearerAuth(token);
+        getHeaders.setAccept(List.of(MediaType.APPLICATION_JSON));
+        ResponseEntity<JsonNode> historyResponse = restTemplate.exchange(
+            "http://localhost:" + apiPort + "/api/channels/1/messages?limit=20",
+            HttpMethod.GET,
+            new HttpEntity<>(getHeaders),
+            JsonNode.class
+        );
+
+        assertThat(historyResponse.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(historyResponse.getBody()).isNotNull();
+        assertThat(historyResponse.getBody().toString().split("browser-msg-1", -1).length - 1).isEqualTo(1);
+    }
+
     private void openSseStream(String token, BlockingQueue<String> lines, AtomicReference<HttpURLConnection> connectionRef) {
         try {
             String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);

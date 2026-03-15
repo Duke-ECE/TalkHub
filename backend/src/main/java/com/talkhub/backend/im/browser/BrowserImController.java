@@ -67,7 +67,9 @@ public class BrowserImController {
         Claims claims = parseAuthorization(authorization);
         ensureChannelExists(channelId);
         MessageView saved = realtimeMessagingService.createAndBroadcastMessage(
-            realtimeMessagingService.nextMessageId(),
+            request.getClientMessageId() == null || request.getClientMessageId().isBlank()
+                ? realtimeMessagingService.nextMessageId()
+                : request.getClientMessageId().trim(),
             channelId,
             Long.valueOf(claims.getSubject()),
             request.getContent().trim(),

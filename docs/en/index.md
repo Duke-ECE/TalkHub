@@ -1,6 +1,6 @@
 # TalkHub Docs
 
-TalkHub is a lightweight real-time chat and voice platform. This site documents setup, architecture, and feature updates.
+TalkHub is a high-performance instant messaging and chat platform. This site documents setup, architecture, and feature updates.
 
 ## Start Here
 
@@ -11,7 +11,6 @@ TalkHub is a lightweight real-time chat and voice platform. This site documents 
 ## Tech Stack
 
 - Frontend: React + Vite + Tailwind CSS
-- Backend: Spring Boot + WebSocket
+- Backend: Spring Boot + Netty
 - Middleware: Redis + RabbitMQ
 - Database: PostgreSQL
-
