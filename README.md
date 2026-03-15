@@ -20,6 +20,48 @@ TalkHub is a high-performance instant messaging and chat platform.
 
 ## Quick Start
 
+### Fastest Local Path
+
+If you want to get the current mock-enabled version running as fast as possible, use this path:
+
+```bash
+cp .env.example .env
+make mock
+```
+
+What you need locally:
+
+- Node.js 20+
+- Java 21+
+- PostgreSQL 14+
+
+What `make mock` does:
+
+- starts the Spring Boot backend
+- starts the Vite frontend
+- seeds demo channels and messages
+- creates mock login accounts
+
+Default local endpoints:
+
+- Frontend: `http://localhost:5173`
+- Backend health: `http://localhost:8080/api/health`
+- Channel history: `GET /api/channels/1/messages`
+- HTTP debug send: `POST /api/channels/1/messages`
+- Browser realtime bridge: `GET /api/im/browser/events`
+
+Mock accounts:
+
+- `admin / admin123456`
+- `lea / mock123456`
+- `mika / mock123456`
+- `sora / mock123456`
+
+Notes:
+
+- PostgreSQL is still required. The mock mode seeds data, but it is not a database-free mode.
+- Redis and RabbitMQ are not required for the basic browser mock flow in the current version.
+
 ### 1) Install dependencies
 
 ```bash
@@ -37,14 +79,6 @@ Run with backend mock data:
 ```bash
 make mock
 ```
-
-Default local endpoints:
-
-- Frontend: `http://localhost:5173`
-- Backend health: `http://localhost:8080/api/health`
-- Channel history: `GET /api/channels/1/messages`
-- HTTP debug send: `POST /api/channels/1/messages`
-- Browser realtime bridge: `GET /api/im/browser/events`
 
 ### 3) Run all tests (backend + frontend)
 
@@ -126,6 +160,46 @@ TalkHub 是一个面向高性能即时通信场景的聊天平台。
 
 ### 快速启动
 
+如果你想最快把当前 mock 版本跑起来，直接走这条路径：
+
+```bash
+cp .env.example .env
+make mock
+```
+
+本地最少需要：
+
+- Node.js 20+
+- Java 21+
+- PostgreSQL 14+
+
+`make mock` 会：
+
+- 启动 Spring Boot 后端
+- 启动 Vite 前端
+- 灌入演示频道和消息
+- 初始化 mock 登录账号
+
+默认访问地址：
+
+- 前端：`http://localhost:5173`
+- 后端健康检查：`http://localhost:8080/api/health`
+- 频道历史消息：`GET /api/channels/1/messages`
+- 浏览器调试发送：`POST /api/channels/1/messages`
+- 浏览器实时桥接：`GET /api/im/browser/events`
+
+默认账号：
+
+- `admin / admin123456`
+- `lea / mock123456`
+- `mika / mock123456`
+- `sora / mock123456`
+
+注意：
+
+- PostgreSQL 仍然是必需依赖。mock 模式只是灌假数据，不是无数据库模式。
+- 当前浏览器 mock 链路不要求你先把 Redis、RabbitMQ 都起起来。
+
 ```bash
 make install
 make run
@@ -136,13 +210,6 @@ make run
 ```bash
 make mock
 ```
-
-默认访问地址：
-
-- 前端：`http://localhost:5173`
-- 后端健康检查：`http://localhost:8080/api/health`
-- 频道历史消息：`GET /api/channels/1/messages`
-- 浏览器调试发送：`POST /api/channels/1/messages`
 
 `make mock` 会额外灌入：
 

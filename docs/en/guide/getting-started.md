@@ -1,5 +1,7 @@
 # Getting Started
 
+If your goal is to get the current login-ready demo running quickly, start with [Mock Quickstart](/en/guide/mock-quickstart).
+
 ## Requirements
 
 - Node.js 20+
@@ -20,6 +22,12 @@ make install
 make run
 ```
 
+To start the version with mock accounts and seeded demo data:
+
+```bash
+make mock
+```
+
 Default endpoints:
 
 - Frontend: `http://localhost:5173`
@@ -34,4 +42,3 @@ npm run docs:dev
 ```
 
 Default docs URL: `http://localhost:5174`
-

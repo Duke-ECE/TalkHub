@@ -2,8 +2,11 @@
 
 TalkHub 是一个面向高性能即时通信场景的聊天平台，当前文档覆盖初始化、架构与功能迭代记录。
 
+如果你只是想尽快把当前版本跑起来并登录体验，优先看 [Mock 版本快速上手](/guide/mock-quickstart)。
+
 ## 你可以从这里开始
 
+- [Mock 版本快速上手](/guide/mock-quickstart)
 - [快速开始](/guide/getting-started)
 - [系统架构](/guide/architecture)
 - [登录功能更新说明](/reference/login-update)

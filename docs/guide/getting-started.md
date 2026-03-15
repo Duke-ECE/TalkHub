@@ -1,5 +1,7 @@
 # 快速开始
 
+如果你的目标是尽快跑起当前可登录、可演示的 mock 版本，建议先看 [Mock 版本快速上手](/guide/mock-quickstart)。
+
 ## 环境要求
 
 - Node.js 20+
@@ -20,6 +22,12 @@ make install
 make run
 ```
 
+如果想直接启动带 mock 账号和 mock 数据的版本：
+
+```bash
+make mock
+```
+
 默认访问地址：
 
 - 前端：`http://localhost:5173`
@@ -34,4 +42,3 @@ npm run docs:dev
 ```
 
 默认访问地址：`http://localhost:5174`
-

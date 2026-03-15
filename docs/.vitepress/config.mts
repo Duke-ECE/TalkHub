@@ -15,6 +15,7 @@ export default defineConfig({
       description: "TalkHub 项目文档站点",
       themeConfig: {
         nav: [
+          { text: "Mock 上手", link: "/guide/mock-quickstart" },
           { text: "指南", link: "/guide/getting-started" },
           { text: "架构", link: "/guide/architecture" },
           { text: "登录更新", link: "/reference/login-update" }
@@ -22,7 +23,10 @@ export default defineConfig({
         sidebar: [
           {
             text: "开始",
-            items: [{ text: "快速开始", link: "/guide/getting-started" }]
+            items: [
+              { text: "Mock 版本快速上手", link: "/guide/mock-quickstart" },
+              { text: "快速开始", link: "/guide/getting-started" }
+            ]
           },
           {
             text: "设计",
@@ -44,6 +48,7 @@ export default defineConfig({
       description: "TalkHub documentation site",
       themeConfig: {
         nav: [
+          { text: "Mock Quickstart", link: "/en/guide/mock-quickstart" },
           { text: "Guide", link: "/en/guide/getting-started" },
           { text: "Architecture", link: "/en/guide/architecture" },
           { text: "Login Update", link: "/en/reference/login-update" }
@@ -51,7 +56,10 @@ export default defineConfig({
         sidebar: [
           {
             text: "Start",
-            items: [{ text: "Getting Started", link: "/en/guide/getting-started" }]
+            items: [
+              { text: "Mock Quickstart", link: "/en/guide/mock-quickstart" },
+              { text: "Getting Started", link: "/en/guide/getting-started" }
+            ]
           },
           {
             text: "Design",
