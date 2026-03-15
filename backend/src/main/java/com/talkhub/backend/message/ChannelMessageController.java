@@ -1,8 +1,8 @@
 package com.talkhub.backend.message;
 
 import com.talkhub.backend.domain.channel.ChannelRepository;
+import com.talkhub.backend.im.browser.OnlineUserDirectory;
 import com.talkhub.backend.im.session.OnlineUserView;
-import com.talkhub.backend.im.session.SessionRegistry;
 import com.talkhub.backend.security.JwtService;
 import io.jsonwebtoken.Claims;
 import jakarta.validation.Valid;
@@ -27,18 +27,18 @@ public class ChannelMessageController {
     private final MessageService messageService;
     private final JwtService jwtService;
     private final ChannelRepository channelRepository;
-    private final SessionRegistry sessionRegistry;
+    private final OnlineUserDirectory onlineUserDirectory;
 
     public ChannelMessageController(
         MessageService messageService,
         JwtService jwtService,
         ChannelRepository channelRepository,
-        SessionRegistry sessionRegistry
+        OnlineUserDirectory onlineUserDirectory
     ) {
         this.messageService = messageService;
         this.jwtService = jwtService;
         this.channelRepository = channelRepository;
-        this.sessionRegistry = sessionRegistry;
+        this.onlineUserDirectory = onlineUserDirectory;
     }
 
     @GetMapping("/{channelId}/messages")
@@ -78,7 +78,7 @@ public class ChannelMessageController {
     ) {
         parseAuthorization(authorization);
         ensureChannelExists(channelId);
-        return ResponseEntity.ok(sessionRegistry.onlineUsers());
+        return ResponseEntity.ok(onlineUserDirectory.listOnlineUsers());
     }
 
     private Claims parseAuthorization(String authorization) {

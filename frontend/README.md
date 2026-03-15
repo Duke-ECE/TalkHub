@@ -24,6 +24,6 @@ npm run dev
 ## 说明
 
 - 当前后端实时链路是 Netty TCP 自定义协议，浏览器不能直接连接
-- 前端已经接好登录和历史消息 REST 流程
-- 前端当前通过 `POST /api/channels/{channelId}/messages` 打通浏览器发送闭环
-- 实时消息接收仍需要额外的网关适配层或 HTTP 调试接口
+- 前端已经接好登录、历史消息 REST 流程和浏览器 SSE 适配层
+- 浏览器通过 `GET /api/im/browser/events` 订阅实时消息与在线态
+- 浏览器通过 `POST /api/im/browser/channels/{channelId}/messages` 把消息交给 Spring 适配层，再桥接到 Netty 广播链路

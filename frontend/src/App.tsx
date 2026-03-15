@@ -34,11 +34,37 @@ type OnlineUser = {
   username: string
 }
 
+type BrowserReadyEvent = {
+  sessionId: string
+  userId: number
+  username: string
+  channelId: number
+  timestamp: number
+  onlineUsers: OnlineUser[]
+}
+
+type BrowserPresenceEvent = {
+  timestamp: number
+  onlineUsers: OnlineUser[]
+}
+
 const AUTH_STORAGE_KEY = 'talkhub_auth'
 const DEFAULT_CHANNEL_ID = 1
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
-const imGatewayUrl = import.meta.env.VITE_IM_GATEWAY_URL ?? ''
-const imTransport = import.meta.env.VITE_IM_TRANSPORT_HINT ?? 'netty-tcp'
+const imGatewayUrl = import.meta.env.VITE_IM_GATEWAY_URL ?? `${apiBaseUrl}/api/im/browser`
+const imTransport = import.meta.env.VITE_IM_TRANSPORT_HINT ?? 'browser-sse -> spring adapter -> netty'
+
+function mergeMessage(current: MessageItem[], incoming: MessageItem) {
+  const existingIndex = current.findIndex((item) => item.messageId === incoming.messageId)
+  if (existingIndex >= 0) {
+    const next = [...current]
+    next[existingIndex] = incoming
+    return next
+  }
+  return [...current, incoming].sort(
+    (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+  )
+}
 
 function readAuthFromStorage(): AuthState | null {
   const raw = localStorage.getItem(AUTH_STORAGE_KEY)
@@ -80,6 +106,8 @@ export default function App() {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [onlineUsersLoading, setOnlineUsersLoading] = useState(false)
   const [onlineUsersError, setOnlineUsersError] = useState('')
+  const [imConnectionState, setImConnectionState] = useState<'idle' | 'connecting' | 'live' | 'retrying' | 'offline'>('idle')
+  const [imConnectionError, setImConnectionError] = useState('')
   const messageListRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -160,17 +188,91 @@ export default function App() {
       setSilentRefreshFailed(false)
       setOnlineUsers([])
       setOnlineUsersError('')
+      setImConnectionState('idle')
+      setImConnectionError('')
       return
     }
 
     void fetchMessages(auth.token)
     void fetchOnlineUsers(auth.token)
-    const timer = window.setInterval(() => {
-      void fetchMessages(auth.token, true)
-      void fetchOnlineUsers(auth.token, true)
-    }, 10000)
+    setImConnectionState('connecting')
+    setImConnectionError('')
 
-    return () => window.clearInterval(timer)
+    const streamUrl = new URL(`${imGatewayUrl}/events`)
+    streamUrl.searchParams.set('channelId', String(DEFAULT_CHANNEL_ID))
+    streamUrl.searchParams.set('token', auth.token)
+
+    let closedByEffect = false
+    let reconnectTimer: number | null = null
+    let eventSource: EventSource | null = null
+
+    const connect = () => {
+      if (closedByEffect) {
+        return
+      }
+
+      eventSource = new EventSource(streamUrl.toString())
+
+      eventSource.addEventListener('ready', (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as BrowserReadyEvent
+        setOnlineUsers(payload.onlineUsers)
+        setOnlineUsersLoading(false)
+        setOnlineUsersError('')
+        setImConnectionState('live')
+        setImConnectionError('')
+      })
+
+      eventSource.addEventListener('chat', (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as MessageItem
+        setMessages((current) => mergeMessage(current, payload))
+        setLastRefreshAt(new Date().toISOString())
+        setSilentRefreshFailed(false)
+        setMessagesError('')
+      })
+
+      eventSource.addEventListener('presence', (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as BrowserPresenceEvent
+        setOnlineUsers(payload.onlineUsers)
+        setOnlineUsersLoading(false)
+        setOnlineUsersError('')
+      })
+
+      eventSource.addEventListener('error', (event) => {
+        try {
+          const payload = JSON.parse((event as MessageEvent).data) as { reason?: string }
+          setImConnectionError(payload.reason || '浏览器适配层返回错误。')
+        } catch {
+          setImConnectionError('实时链路暂时不可用，已切换为重连状态。')
+        }
+      })
+
+      eventSource.onopen = () => {
+        setImConnectionState('live')
+        setImConnectionError('')
+      }
+
+      eventSource.onerror = () => {
+        if (closedByEffect) {
+          return
+        }
+        eventSource?.close()
+        setImConnectionState('retrying')
+        setImConnectionError('实时链路已断开，正在尝试重连。')
+        reconnectTimer = window.setTimeout(() => {
+          connect()
+        }, 2000)
+      }
+    }
+
+    connect()
+
+    return () => {
+      closedByEffect = true
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer)
+      }
+      eventSource?.close()
+    }
   }, [auth])
 
   useEffect(() => {
@@ -225,7 +327,7 @@ export default function App() {
     setSendLoading(true)
     setSendError('')
     try {
-      const resp = await fetch(`${apiBaseUrl}/api/channels/${DEFAULT_CHANNEL_ID}/messages`, {
+      const resp = await fetch(`${imGatewayUrl}/channels/${DEFAULT_CHANNEL_ID}/messages`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${auth.token}`,
@@ -245,12 +347,10 @@ export default function App() {
         throw new Error(errorMessage)
       }
 
-      const created = (await resp.json()) as MessageItem
-      setMessages((current) => [...current, created])
+      await resp.json()
       setComposerText('')
       setLastRefreshAt(new Date().toISOString())
       setSilentRefreshFailed(false)
-      void fetchOnlineUsers(auth.token, true)
     } catch (error) {
       setSendError(error instanceof Error ? error.message : '消息发送失败，请检查后端服务。')
     } finally {
@@ -276,11 +376,11 @@ export default function App() {
 
   const runtimeCards = [
     { label: 'REST API', value: apiBaseUrl, accent: 'text-teal-700' },
-    { label: 'IM Gateway', value: imGatewayUrl || '未配置浏览器适配层', accent: 'text-amber-700' },
+    { label: 'IM Gateway', value: imGatewayUrl, accent: 'text-amber-700' },
     { label: 'Transport', value: imTransport, accent: 'text-slate-700' },
+    { label: 'Realtime', value: imConnectionState, accent: imConnectionState === 'live' ? 'text-emerald-700' : 'text-amber-700' },
   ]
 
-  const imReady = Boolean(imGatewayUrl)
   const messageCountLabel = `${messages.length} message${messages.length === 1 ? '' : 's'}`
 
   return (
@@ -294,13 +394,12 @@ export default function App() {
             <div>
               <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Channel cockpit for the Netty MVP.</h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-                前端已接上登录态、频道历史消息和运行态展示。浏览器端即时收发仍依赖 Netty 网关或 HTTP 调试适配层，
-                当前界面会把这层缺口直接暴露出来。
+                前端现在通过浏览器 SSE 适配层接入 Spring Boot，再由后端桥接到 Netty 实时链路。右侧在线成员和中间消息流会直接跟随实时事件刷新。
               </p>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {runtimeCards.map((card) => (
               <div
                 key={card.label}
@@ -321,7 +420,7 @@ export default function App() {
                 <h2 className="mt-5 text-3xl font-black sm:text-4xl">先拿到 JWT，再进入频道工作台。</h2>
                 <p className="mt-5 text-sm leading-7 text-slate-300 sm:text-base">
                   这个前端已经不是单纯的登录落地页。登录成功后会自动恢复会话、读取 `general` 频道历史消息，并展示
-                  Netty 运行态与浏览器适配缺口，方便后续继续接 IM 网关。
+                  Netty 实时链路和浏览器适配层运行态。
                 </p>
               </div>
             </div>
@@ -388,7 +487,7 @@ export default function App() {
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                   <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Channel</div>
                   <div className="mt-2 text-lg font-bold text-slate-900"># general</div>
-                  <div className="mt-1 text-sm text-slate-500">默认公共频道，历史消息从 REST API 拉取。</div>
+                  <div className="mt-1 text-sm text-slate-500">默认公共频道，先拉历史，再接浏览器实时流。</div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
@@ -487,15 +586,13 @@ export default function App() {
                     <div>
                       <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Composer</div>
                       <div className="mt-1 text-sm text-slate-600">
-                        {imReady
-                          ? '已配置浏览器适配层地址；当前仍优先使用 HTTP 调试发送，后续可以切到实时收发。'
-                          : '当前后端是 Netty TCP，自定义协议不能被浏览器直接连接；这里通过 HTTP 调试接口先打通浏览器发送闭环。'}
+                        浏览器消息先进入 Spring 适配层，再复用后端的 Netty 广播链路；当前列表由 SSE 实时推送更新。
                       </div>
                     </div>
                     <div className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                      imReady ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      imConnectionState === 'live' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                     }`}>
-                      {imReady ? 'Adapter configured' : 'HTTP debug mode'}
+                      {imConnectionState === 'live' ? 'Realtime live' : 'Realtime reconnecting'}
                     </div>
                   </div>
 
@@ -505,7 +602,7 @@ export default function App() {
                       value={composerText}
                       onChange={(e) => setComposerText(e.target.value)}
                       onKeyDown={handleComposerKeyDown}
-                      placeholder="输入消息，当前会通过 HTTP 调试接口发送。"
+                      placeholder="输入消息，当前会经浏览器适配层转发到 Netty 广播链路。"
                       disabled={sendLoading}
                     />
                     <button
@@ -518,6 +615,9 @@ export default function App() {
                     </button>
                   </div>
                   <div className="mt-3 text-xs text-slate-400">发送快捷键：`Ctrl+Enter` / `Cmd+Enter`</div>
+                  {imConnectionError ? (
+                    <div className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-700">{imConnectionError}</div>
+                  ) : null}
                   {sendError ? <div className="mt-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{sendError}</div> : null}
                 </div>
               </div>
@@ -528,7 +628,7 @@ export default function App() {
                 <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Presence Snapshot</div>
                 <h2 className="mt-2 text-2xl font-black text-slate-900">频道成员视图</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  当前优先展示后端真实在线 IM 会话；如果还没有用户完成 Netty 鉴权，会退回到历史消息推断的占位视图。
+                  右侧成员栏优先展示浏览器适配层和 Netty 会话合并后的在线态；实时链路掉线时再退回历史消息推断。
                 </p>
                 {onlineUsersError ? (
                   <div className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-700">{onlineUsersError}</div>
@@ -548,7 +648,7 @@ export default function App() {
                               ? 'bg-emerald-100 text-emerald-700'
                               : 'bg-teal-100 text-teal-700'
                           }`}>
-                            {user.userId === auth.user.id ? '当前登录' : 'IM 在线'}
+                            {user.userId === auth.user.id ? '当前登录' : '实时在线'}
                           </div>
                         </div>
                       ))
@@ -571,12 +671,12 @@ export default function App() {
               </section>
 
               <section className="rounded-[2rem] border border-slate-900/10 bg-slate-950 p-5 text-white shadow-xl shadow-slate-400/30">
-                <div className="text-xs uppercase tracking-[0.22em] text-amber-300">Frontend Gap</div>
-                <h2 className="mt-2 text-2xl font-black">下一步接入点</h2>
+                <div className="text-xs uppercase tracking-[0.22em] text-amber-300">Adapter Status</div>
+                <h2 className="mt-2 text-2xl font-black">浏览器适配层已接通</h2>
                 <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
-                  <li>增加浏览器到 Netty 的网关适配层，替代旧的 WebSocket 直连假设。</li>
-                  <li>补一个在线用户接口，让右侧成员栏改为真实 presence 数据。</li>
-                  <li>把消息发送器接到适配层，再做 ACK、重连和未读态展示。</li>
+                  <li>历史消息仍由 REST 拉取，保证刷新后可恢复上下文。</li>
+                  <li>新消息和在线态由浏览器 SSE 适配层实时下发。</li>
+                  <li>下一步可以继续补 ACK、断线重连策略和未读态。</li>
                 </ul>
               </section>
             </aside>

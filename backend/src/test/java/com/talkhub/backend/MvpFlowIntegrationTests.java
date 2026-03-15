@@ -28,9 +28,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -282,6 +288,138 @@ class MvpFlowIntegrationTests {
         assertThat(response.getBody().toString()).contains("\"username\":\"admin\"");
 
         channel.close().sync();
+    }
+
+    @Test
+    void shouldStreamBrowserAdapterEventsAndBroadcastToNettyClients() throws Exception {
+        ResponseEntity<Map> loginResponse = restTemplate.postForEntity(
+            "http://localhost:" + apiPort + "/api/auth/login",
+            Map.of("username", "admin", "password", "admin123456"),
+            Map.class
+        );
+        assertThat(loginResponse.getStatusCode().is2xxSuccessful()).isTrue();
+        String token = String.valueOf(loginResponse.getBody().get("token"));
+
+        BlockingQueue<String> sseLines = new LinkedBlockingQueue<>();
+        AtomicReference<HttpURLConnection> browserConnection = new AtomicReference<>();
+        Thread readerThread = new Thread(() -> openSseStream(token, sseLines, browserConnection));
+        readerThread.start();
+
+        String readyPayload = awaitSseEventData(sseLines, "ready");
+        assertThat(readyPayload).contains("\"username\":\"admin\"");
+
+        HttpHeaders onlineHeaders = new HttpHeaders();
+        onlineHeaders.setBearerAuth(token);
+        onlineHeaders.setAccept(List.of(MediaType.APPLICATION_JSON));
+        ResponseEntity<JsonNode> onlineResponse = restTemplate.exchange(
+            "http://localhost:" + apiPort + "/api/channels/1/online-users",
+            HttpMethod.GET,
+            new HttpEntity<>(onlineHeaders),
+            JsonNode.class
+        );
+        assertThat(onlineResponse.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(onlineResponse.getBody()).isNotNull();
+        assertThat(onlineResponse.getBody().toString()).contains("\"username\":\"admin\"");
+
+        BlockingQueue<ImPacket> inboundPackets = new LinkedBlockingQueue<>();
+        eventLoopGroup = new NioEventLoopGroup(1);
+        ImPacketCodec clientCodec = new ImPacketCodec(objectMapper, new TestAppProperties());
+        var channel = new Bootstrap()
+            .group(eventLoopGroup)
+            .channel(NioSocketChannel.class)
+            .handler(new ChannelInitializer<SocketChannel>() {
+                @Override
+                protected void initChannel(SocketChannel ch) {
+                    ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(1024 * 1024, 0, 4, 0, 4));
+                    ch.pipeline().addLast(new LengthFieldPrepender(4));
+                    ch.pipeline().addLast(clientCodec);
+                    ch.pipeline().addLast(new SimpleChannelInboundHandler<ImPacket>() {
+                        @Override
+                        protected void channelRead0(ChannelHandlerContext ctx, ImPacket msg) {
+                            inboundPackets.offer(msg);
+                        }
+                    });
+                }
+            })
+            .connect("127.0.0.1", imServerLifecycle.getBoundPort())
+            .sync()
+            .channel();
+
+        channel.writeAndFlush(new ImPacket(
+            PacketType.AUTH_REQ,
+            1L,
+            "auth-browser-bridge",
+            Instant.now().toEpochMilli(),
+            JsonNodeFactory.instance.objectNode().put("token", token)
+        )).sync();
+        assertThat(inboundPackets.poll(5, TimeUnit.SECONDS)).isNotNull();
+
+        HttpHeaders sendHeaders = new HttpHeaders();
+        sendHeaders.setBearerAuth(token);
+        sendHeaders.setContentType(MediaType.APPLICATION_JSON);
+        ResponseEntity<JsonNode> sendResponse = restTemplate.exchange(
+            "http://localhost:" + apiPort + "/api/im/browser/channels/1/messages",
+            HttpMethod.POST,
+            new HttpEntity<>(Map.of("content", "hello browser bridge"), sendHeaders),
+            JsonNode.class
+        );
+        assertThat(sendResponse.getStatusCode().is2xxSuccessful()).isTrue();
+
+        ImPacket chatResp = inboundPackets.poll(5, TimeUnit.SECONDS);
+        assertThat(chatResp).isNotNull();
+        assertThat(chatResp.getPacketType()).isEqualTo(PacketType.CHAT_RESP);
+        assertThat(chatResp.getPayload().path("content").asText()).isEqualTo("hello browser bridge");
+
+        String chatPayload = awaitSseEventData(sseLines, "chat");
+        assertThat(chatPayload).contains("\"content\":\"hello browser bridge\"");
+
+        channel.close().sync();
+        HttpURLConnection connection = browserConnection.get();
+        if (connection != null) {
+            connection.disconnect();
+        }
+        readerThread.join(1000);
+    }
+
+    private void openSseStream(String token, BlockingQueue<String> lines, AtomicReference<HttpURLConnection> connectionRef) {
+        try {
+            String encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
+            var url = new java.net.URL(
+                "http://localhost:" + apiPort + "/api/im/browser/events?channelId=1&token=" + encodedToken
+            );
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("Accept", MediaType.TEXT_EVENT_STREAM_VALUE);
+            connection.setReadTimeout(0);
+            connectionRef.set(connection);
+            try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8)
+            )) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    lines.offer(line);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String awaitSseEventData(BlockingQueue<String> lines, String expectedEvent) throws InterruptedException {
+        String currentEvent = null;
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (System.nanoTime() < deadline) {
+            String line = lines.poll(5, TimeUnit.SECONDS);
+            if (line == null) {
+                continue;
+            }
+            if (line.startsWith("event:")) {
+                currentEvent = line.substring("event:".length()).trim();
+                continue;
+            }
+            if (line.startsWith("data:") && expectedEvent.equals(currentEvent)) {
+                return line.substring("data:".length()).trim();
+            }
+        }
+        return null;
     }
 
     private static final class TestAppProperties extends com.talkhub.backend.config.AppProperties {
