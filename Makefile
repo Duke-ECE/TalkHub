@@ -1,6 +1,9 @@
 SHELL := /bin/bash
 
-.PHONY: help ensure-env install backend-install frontend-install build backend-build frontend-build backend-test frontend-test test run docs-install docs-run docs-build clean
+MAVEN_REPO_LOCAL ?= /tmp/m2
+MVNW := ./mvnw -Dmaven.repo.local=$(MAVEN_REPO_LOCAL)
+
+.PHONY: help ensure-env ensure-m2 ensure-frontend-deps install backend-install frontend-install build backend-build frontend-build backend-test frontend-test test run docs-install docs-run docs-build clean
 
 help:
 	@printf "%s\n" \
@@ -18,46 +21,51 @@ ensure-env:
 		echo "Created .env from .env.example. Update it before connecting to real services."; \
 	fi
 
-install: ensure-env backend-install frontend-install frontend-build
+ensure-m2:
+	@mkdir -p $(MAVEN_REPO_LOCAL)
 
-backend-install:
+ensure-frontend-deps:
+	@cd frontend; \
+	if [ ! -x node_modules/.bin/tsc ] || [ ! -x node_modules/.bin/vite ]; then \
+		rm -rf node_modules; \
+		npm ci; \
+	fi
+
+install: ensure-env ensure-m2 backend-install frontend-install frontend-build
+
+backend-install: ensure-m2
 	@set -a; source ./.env; \
 	if [ -z "$${DB_DSN}" ]; then \
 		export DB_DSN="jdbc:postgresql://$${PG_HOST:-localhost}:$${PG_PORT:-5432}/$${PG_DATABASE:-echocenter}?sslmode=$${PG_SSLMODE:-disable}"; \
 	fi; \
 	set +a; \
-	cd backend && ./mvnw -q -DskipTests package
+	cd backend && $(MVNW) -q -DskipTests package
 
-frontend-install:
-	@cd frontend && npm install
+frontend-install: ensure-frontend-deps
 
 build: backend-build frontend-build
 
-backend-build:
+backend-build: ensure-m2
 	@set -a; source ./.env; \
 	if [ -z "$${DB_DSN}" ]; then \
 		export DB_DSN="jdbc:postgresql://$${PG_HOST:-localhost}:$${PG_PORT:-5432}/$${PG_DATABASE:-echocenter}?sslmode=$${PG_SSLMODE:-disable}"; \
 	fi; \
 	set +a; \
-	cd backend && ./mvnw -q -DskipTests package
+	cd backend && $(MVNW) -q -DskipTests package
 
-frontend-build:
+frontend-build: ensure-frontend-deps
 	@set -a; source ./.env; set +a; \
 	cd frontend && npm run build
 
-backend-test:
-	@cd backend && ./mvnw -B test
+backend-test: ensure-m2
+	@cd backend && $(MVNW) -B test
 
-frontend-test:
-	@cd frontend; \
-	if [ ! -d node_modules ]; then \
-		npm ci; \
-	fi; \
-	npm run build
+frontend-test: ensure-frontend-deps
+	@cd frontend && npm run build
 
 test: backend-test frontend-test
 
-run: ensure-env
+run: ensure-env ensure-m2 ensure-frontend-deps
 	@set -a; source ./.env; \
 	if [ -z "$${DB_DSN}" ]; then \
 		export DB_DSN="jdbc:postgresql://$${PG_HOST:-localhost}:$${PG_PORT:-5432}/$${PG_DATABASE:-echocenter}?sslmode=$${PG_SSLMODE:-disable}"; \
@@ -78,7 +86,7 @@ run: ensure-env
 	fi; \
 	set +a; \
 	trap 'kill 0' INT TERM EXIT; \
-	(cd backend && ./mvnw spring-boot:run) & \
+	(cd backend && $(MVNW) spring-boot:run) & \
 	(cd frontend && npm run dev -- --host 0.0.0.0) & \
 	wait
 
