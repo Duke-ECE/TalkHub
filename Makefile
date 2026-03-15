@@ -3,7 +3,7 @@ SHELL := /bin/bash
 MAVEN_REPO_LOCAL ?= /tmp/m2
 MVNW := ./mvnw -Dmaven.repo.local=$(MAVEN_REPO_LOCAL)
 
-.PHONY: help ensure-env ensure-m2 ensure-frontend-deps install backend-install frontend-install build backend-build frontend-build backend-test frontend-test test run mock run-mock docs-install docs-run docs-build clean
+.PHONY: help ensure-env ensure-m2 ensure-frontend-deps install backend-install frontend-install build backend-build frontend-build backend-test frontend-test test run mock run-mock docs-install docs-run docs-build vitepress-install vitepress-run clean
 
 help:
 	@printf "%s\n" \
@@ -13,6 +13,8 @@ help:
 		"make mock     - start backend and frontend with backend mock users/channels/messages enabled" \
 		"make docs-install - install docs dependencies" \
 		"make docs-run     - start VitePress docs dev server on 5174" \
+		"make vitepress-install - install VitePress docs dependencies" \
+		"make vitepress-run     - start VitePress docs dev server on 5174" \
 		"make docs-build   - build VitePress docs site" \
 		"make clean    - remove frontend dist and backend target"
 
@@ -129,6 +131,10 @@ docs-run:
 
 docs-build:
 	@cd docs && npm run docs:build
+
+vitepress-install: docs-install
+
+vitepress-run: docs-run
 
 clean:
 	@rm -rf backend/target frontend/dist docs/.vitepress/dist
