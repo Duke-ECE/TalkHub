@@ -48,6 +48,9 @@ app:
     username: ${ADMIN_USERNAME:admin}
     password: ${ADMIN_PASSWORD:admin123456}
     nickname: ${ADMIN_NICKNAME:Administrator}
+  mock:
+    enabled: ${APP_MOCK_ENABLED:false}
+    password: ${APP_MOCK_PASSWORD:mock123456}
   database:
     auto-create-if-missing: ${DB_AUTO_CREATE_IF_MISSING:true}
     host: ${PG_HOST:localhost}
@@ -57,5 +60,14 @@ app:
     name: ${PG_DATABASE:echocenter}
     sslmode: ${PG_SSLMODE:disable}
     bootstrap-database: ${PG_BOOTSTRAP_DATABASE:postgres}
-  realtime:
-    websocket-path: /ws
+  im:
+    enabled: ${IM_ENABLED:false}
+    host: ${IM_HOST:0.0.0.0}
+    port: ${IM_PORT:9090}
+    boss-threads: ${IM_BOSS_THREADS:1}
+    worker-threads: ${IM_WORKER_THREADS:0}
+    reader-idle-seconds: ${IM_READER_IDLE_SECONDS:60}
+    writer-idle-seconds: ${IM_WRITER_IDLE_SECONDS:25}
+    max-frame-length: ${IM_MAX_FRAME_LENGTH:1048576}
+    compression-threshold-bytes: ${IM_COMPRESSION_THRESHOLD_BYTES:512}
+    session-ttl-seconds: ${IM_SESSION_TTL_SECONDS:120}

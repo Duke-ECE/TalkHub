@@ -2,6 +2,8 @@
 
 本文件是 TalkHub 项目的全局协作与长期记忆约束。后续在本仓库内进行分析、设计、编码、测试、文档更新时，默认遵守本文件，除非用户在当前任务中明确覆盖。
 
+当前用户已明确要求放弃 `WebSocket` 方案，改为 `Netty` 长连接即时通信架构。后续实现、文档与设计均以该决定为准。
+
 ## 1. 文档优先级
 
 项目当前有两份关键来源文档：
@@ -37,10 +39,10 @@ TalkHub 是一个轻量级实时聊天与语音平台，目标能力包括：
 
 ### 后端
 
-- 以 `Spring Boot` 为核心框架
-- 使用 `WebSocket` 承担实时通信
-- 使用 `Redis` 缓存在线状态、频道成员列表、未读消息数
-- 使用 `RabbitMQ` 处理消息异步落库与频道事件广播
+- 以 `Spring Boot` 作为业务 API 层
+- 使用 `Netty` 承担实时通信与长连接管理
+- 使用 `Redis` 缓存在线状态、会话路由、离线消息与待 ACK 状态
+- 使用 `RabbitMQ` 处理后续阶段的消息异步落库与跨节点事件广播
 
 ### 数据库
 
@@ -70,9 +72,9 @@ PG_SSLMODE=disable
 若用户未另行指定，按以下方向组织系统：
 
 - 前端：React 单页应用
-- 后端：Spring Boot 提供 REST API + WebSocket 服务
-- Redis：缓存在线态、会话态、频道成员态、未读计数
-- RabbitMQ：削峰与异步事件分发
+- 后端：Spring Boot 提供 REST API，Netty 提供 IM 长连接服务
+- Redis：缓存在线态、会话态、离线消息、待 ACK 数据
+- RabbitMQ：第二阶段用于削峰与异步事件分发
 - PostgreSQL：持久化用户、频道、消息、关系数据
 
 ## 6. 领域模型最小集合
@@ -85,6 +87,8 @@ PG_SSLMODE=disable
 - Message
 - MessageReadState 或 UnreadCounter
 - OnlinePresence
+- ImSession
+- MessageDelivery
 
 如果新增实体，应优先说明其与上述核心模型的关系。
 
@@ -106,7 +110,7 @@ PG_SSLMODE=disable
 1. 初始化工程结构与基础配置
 2. 用户鉴权与基础用户模型
 3. 频道与成员管理
-4. WebSocket 实时聊天主链路
+4. Netty 即时通信主链路
 5. 消息持久化与历史查询
 6. 在线状态、未读数、缓存策略
 7. RabbitMQ 异步化与广播优化

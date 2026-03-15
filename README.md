@@ -1,11 +1,11 @@
 # TalkHub
 
-TalkHub is a lightweight real-time chat and voice platform.
+TalkHub is a high-performance instant messaging and chat platform.
 
 ## Overview
 
 - Frontend: React + Vite + Tailwind CSS
-- Backend: Spring Boot + WebSocket
+- Backend: Spring Boot + Netty
 - Cache: Redis
 - Queue: RabbitMQ
 - Database: PostgreSQL
@@ -32,10 +32,19 @@ make install
 make run
 ```
 
+Run with backend mock data:
+
+```bash
+make mock
+```
+
 Default local endpoints:
 
 - Frontend: `http://localhost:5173`
 - Backend health: `http://localhost:8080/api/health`
+- Channel history: `GET /api/channels/1/messages`
+- HTTP debug send: `POST /api/channels/1/messages`
+- Browser realtime bridge: `GET /api/im/browser/events`
 
 ### 3) Run all tests (backend + frontend)
 
@@ -105,12 +114,12 @@ This project is licensed under the [MIT License](./LICENSE).
 
 ## 中文说明
 
-TalkHub 是一个轻量级实时聊天与语音平台。
+TalkHub 是一个面向高性能即时通信场景的聊天平台。
 
 ### 技术栈
 
 - 前端：React + Vite + Tailwind CSS
-- 后端：Spring Boot + WebSocket
+- 后端：Spring Boot + Netty
 - 缓存：Redis
 - 消息队列：RabbitMQ
 - 数据库：PostgreSQL
@@ -122,10 +131,30 @@ make install
 make run
 ```
 
+如果想直接带后端 mock 数据启动：
+
+```bash
+make mock
+```
+
 默认访问地址：
 
 - 前端：`http://localhost:5173`
 - 后端健康检查：`http://localhost:8080/api/health`
+- 频道历史消息：`GET /api/channels/1/messages`
+- 浏览器调试发送：`POST /api/channels/1/messages`
+
+`make mock` 会额外灌入：
+
+- mock 用户：`lea`、`mika`、`sora`
+- mock 频道：`general`、`product`、`ops`
+- mock 用户默认密码：`mock123456`
+
+### 当前前端链路说明
+
+- 浏览器端已经支持：登录、JWT 持久化、历史消息查询、HTTP 调试发送
+- 后端即时通信主链路仍然是 Netty TCP 自定义协议
+- 如果要在浏览器中接入真正的实时收发，需要单独增加 IM 网关或适配层
 
 ### 测试（前后端一起）
 

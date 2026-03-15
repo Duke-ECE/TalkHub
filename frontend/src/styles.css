@@ -5,7 +5,7 @@
 :root {
   color: #0f172a;
   background: #f8fafc;
-  font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", sans-serif;
 }
 
 body {
@@ -17,3 +17,10 @@ body {
   box-sizing: border-box;
 }
 
+body {
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
